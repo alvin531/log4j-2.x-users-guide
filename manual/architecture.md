@@ -134,7 +134,7 @@ LoggerConfig包含一个日志级别（[Log Level](https://logging.apache.org/lo
 
 下表说明了Level过滤的工作原理。在表中，垂直头显示LogEvent的Level，而水平头显示与适当LoggerConfig关联的Level。其交集说明是否允许LogEvent通过进一步处理（:heavy_check_mark:）或丢弃（:x:）。
 
-| Event Level | LoggerConfig Level |
+| Event Level | LoggerConfig Level | | | | | | |
 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
 | | **TRACE** | **DEBUG** | **INFO** | **WARN** | **ERROR** | **FATAL** | **OFF** |
 | **ALL** | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x: |
