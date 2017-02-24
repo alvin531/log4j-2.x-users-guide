@@ -126,8 +126,62 @@ public class MyApp {
 
 ### LocalizedMessage
 
-[LocalizedMessage]()主要为了兼容Log4j 1.x。通常，本地化的最佳方法是让客户端UI里进行本地化处理。
+[LocalizedMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/LocalizedMessage.html)主要为了兼容Log4j 1.x。通常，本地化的最佳方法是让客户端UI里进行本地化处理。
 
-LocalizedMessage包含一个ResourceBundle对象，并允许消息模式参数作为包中消息模式的键。如果未指定任何bundle，LocalizedMessage将尝试查找包含用于记录事件的Logger名称的bundle。从包中检索的消息将使用FormattedMessage格式化。
+LocalizedMessage包含一个ResourceBundle对象，让消息模式（message pattern）参数作为bundle里的key来获取本地化的消息模式。如果未指定任何bundle，LocalizedMessage将尝试查找相应的Logger名字的bundle。从bundle中检索的消息将使用FormattedMessage格式化。
 
 ### LoggerNameAwareMessage
+
+[LoggerNameAwareMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/LoggerNameAwareMessage.html)是一个接口中，带setLoggerName方法。在事件构造期间将调用此方法，以便Message在格式化时可以使用到Logger的名字（其中LocalizedMessage实现了该接口）。
+
+### MapMessage
+
+[MapMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/MapMessage.html)包含key和value的映射。MapMessage实现FormattedMessage，可设置为输出成"XML"或"JSON"格式，在这种情况下，Map将格式化为XML或JSON。否则，Map将格式为“key1=value1 key2=value2 ...”。
+
+### MessageFormatMessage
+
+[MessageFormatMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/MessageFormatMessage.html)可处理符合`java.text.MessageFormat`[转换格式](http://docs.oracle.com/javase/6/docs/api/java/text/MessageFormat.html)的message。虽然它比ParameterizedMessage使用起来更灵活，但它的性能也更低，慢两倍左右。
+
+### MultiformatMessage
+
+[MultiformatMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/MultiformatMessage.html)接口包含一个getFormats方法和一个接受格式字符串数组的getFormattedMessage方法。getFormats方法可以被Layout调用，以提供Message支持哪些格式化信息。然后Layout使用这些格式化信息调用getFormattedMessage方法。如果Message不支持该格式，它将使用其默认格式简进行处理。比如，StructuredDataMessage，它接受格式为“XML”的字符串，这就决定了它将数据格式化为XML而不是RFC 5424格式。
+
+### ObjectMessage
+
+[ObjectMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/ObjectMessage.html)通过调用其toString方法来格式化对象。从Log4j 2.6开始，Layout调用`formatTo(StringBuilder)`方法来达到low-garbage或garbage-free的目的。
+
+### ParameterizedMessage
+
+[ParameterizedMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/ParameterizedMessage.html)处理包含“{}”的消息，其格式为表示可替换令牌和替换参数。
+
+### ReusableObjectMessage
+
+在garbage-free模式下，此Message用于将记录的对象传递到Layout和Appender上。功能等同于[ObjectMessage](./messages.md#ObjectMessage)。
+
+### ReusableParameterizedMessage
+
+在garbage-free模式下，此Message用于处理包含“{}”的消息，其格式为表示可替换令牌和替换参数。功能等同于[ParameterizedMessage](./messages.md#ParameterizedMessage)。
+
+### ReusableSimpleMessage
+
+在garbage-free模式下，此Message用于将记录的字符串和CharSequences传递到Layout和Appender上。功能上等同于[SimpleMessage](./messages.md#SimpleMessage)。
+
+### SimpleMessage
+
+[SimpleMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/SimpleMessage.html)包含不需要格式化的字符串或CharSequence。
+
+### StringFormattedMessage
+
+[StringFormattedMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/StringFormattedMessage.html)处理符合`java.lang.String.format()`的[转换格式](http://docs.oracle.com/javase/6/docs/api/java/util/Formatter.html#syntax)的message。虽然其比ParameterizedMessage更灵活，但它也慢5到10倍。
+
+### StructuredDataMessage
+
+[StructuredDataMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/StructuredDataMessage.html)允许应用程序向Map中添加项以及设置id，以允许根据RFC 5424将消息格式化为结构化数据元素。
+
+### ThreadDumpMessage
+
+[ThreadDumpMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/ThreadDumpMessage.html)将生成所有线程的堆栈跟踪信息。如果在Java 6+上运行，堆栈跟踪信息也包括hold住的任何锁。
+
+### TimestampMessage
+
+[TimestampMessage](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/message/TimestampMessage.html)接口有一个getTimestamp方法，可以使其在事件构建期间被调用。将使用Message中的时间戳代替当前时间戳。
