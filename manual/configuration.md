@@ -1170,4 +1170,12 @@ Log4j 2系统属性：
 | org.apache.logging.log4j.simplelog.&lt;loggerName&gt;level | SimpleLogger默认级别 | 特定名称的SimpleLogger实例的日志级别。 |
 | org.apache.logging.log4j.simplelog.StatusLogger.level | ERROR | 此属性用于控制初始StatusLogger级别，并且可以通过调用`StatusLogger.getLogger().setLevel(someLevel)`在代码中改写。请注意，StatusLogger级别仅用于确定status日志输出级别，直到注册了listener。实际上，当解析配置时发现了listener，从那时起，status消息仅被发送到listener（取决于它们的statusLevel）。 |
 | Log4jDefaultStatusLevel | ERROR | StatusLogger将日志记录系统中发生的事件记录到console。在配置期间，AbstractConfiguration向StatusLogger注册StatusConsoleListener，可以将status日志事件从默认控制台输出重定向到文件。listener（监听器）还支持细粒度过滤。如果配置未指定status级别，则使用此系统属性指定日志级别。<br><br> 注意：只有在找到配置文件之后，log4j-core实现才会使用此属性。 |
-| log4j2.StatusLogger.level | WARN | StatusLogger的初始“listenersLevel”。 如果添加了StatusLogger监听器，则“listenerLevel”将更改为最详细监听器的监听器。 如果注册了任何侦听器，listenerLevel用于快速确定是否存在感兴趣的侦听器。<br><br> 默认情况下，StatusLogger侦听器在发现配置时由JMX StatusLoggerAdmin MBean添加。 例如，如果配置包含<Configuration status =“trace”>，则会注册具有statusLevel TRACE的侦听器，并且StatusLogger listenerLevel设置为TRACE，从而在控制台上显示详细的状态消息。<br><br> 如果没有注册监听器，则不使用listenersLevel，StatusLogger输出级别由StatusLogger.getLogger（）。getLevel（）（请参阅属性org.apache.logging.log4j.simplelog.StatusLogger.level）确定。 |
+| log4j2.StatusLogger.level | WARN | 初始化StatusLogger的“listenersLevel”。如果添加了StatusLogger listeners，则“listenerLevel”将更改为listeners中最低级别的。如果注册了listeners，listenerLevel可以快速判断是否存在匹配上的listener。<br><br> 默认情况下，在解析配置和通过JMX StatusLoggerAdmin MBean来添加StatusLogger listeners。例如，如果配置是`<Configuration status="trace">`，则会注册statusLevel TRACE的listener，且StatusLogger listenerLevel设置为TRACE，在console上显示详细的status消息。<br><br> 如果没有注册listeners，则listenersLevel不会被使用，StatusLogger输出级别由`StatusLogger.getLogger().getLevel()`决定（请参阅属性`org.apache.logging.log4j.simplelog.StatusLogger.level`）。 |
+| log4j2.status.entries | 200 | 保存在缓冲区中且可以使用`StatusLogger.getStatusData()`获取到的StatusLogger事件数。 |
+| AsyncLogger.ExceptionHandler | default handler | 详情看[Async Logger](./async.md#SysPropsAllAsync)章节。 |
+| AsyncLogger.RingBufferSize | 256 * 1024 | 详情看[Async Logger](./async.md#SysPropsAllAsync)章节。 |
+| AsyncLogger.WaitStrategy | Timeout | 详情看[Async Logger](./async.md#SysPropsAllAsync)章节。 |
+| AsyncLogger.ThreadNameStrategy | CACHED | 详情看[Async Logger](./async.md#SysPropsAllAsync)章节。 |
+| AsyncLoggerConfig.ExceptionHandler | default handler | 详情看[Async Logger](./async.md#SysPropsMixedSync-Async)章节。 |
+| AsyncLoggerConfig.RingBufferSize | 256 * 1024 | 详情看[Async Logger](./async.md#SysPropsMixedSync-Async)章节。 |
+| AsyncLoggerConfig.WaitStrategy | Timeout | 详情看[Async Logger](./async.md#SysPropsMixedSync-Async)章节。 |
