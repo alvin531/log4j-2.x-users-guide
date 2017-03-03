@@ -104,7 +104,7 @@ for( final Session session : sessions ) {
 
 ### 实现细节
 
-默认情况下，Stack和Map是基于[ThreadLocal](http://docs.oracle.com/javase/6/docs/api/java/lang/ThreadLocal.html)进行管理的。通过设置系统属性`isThreadContextMapInheritable`为`true`，可以使用[InheritableThreadLocal](http://docs.oracle.com/javase/6/docs/api/java/lang/InheritableThreadLocal.html)来管理Map。这种情况下，Map的内容将被传递给子线程。不过，正如在[Executors](http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/Executors.html#privilegedThreadFactory())类中讨论的，在使用线程池的情况下，ThreadContext可能不总是可以传递到工作线程。在这些情况下，池机制应当提供必要的措施来解决。那么，getContext()和cloneStack()方法就可以分别用于获取Map和Stack的副本。
+默认情况下，Stack和Map是基于[ThreadLocal](http://docs.oracle.com/javase/6/docs/api/java/lang/ThreadLocal.html)进行管理的。通过设置系统属性`isThreadContextMapInheritable`为`true`，可以使用[InheritableThreadLocal](http://docs.oracle.com/javase/6/docs/api/java/lang/InheritableThreadLocal.html)来管理Map。这种情况下，Map的内容将被传递给子线程。不过，正如在[Executors](http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/Executors.html#privilegedThreadFactory%28%29)类中讨论的，在使用线程池的情况下，ThreadContext可能不总是可以传递到工作线程。在这些情况下，池机制应当提供必要的措施来解决。那么，getContext()和cloneStack()方法就可以分别用于获取Map和Stack的副本。
 
 注意，[ThreadContext](https://logging.apache.org/log4j/2.x/log4j-api/apidocs/org/apache/logging/log4j/ThreadContext.html)类的所有方法都是静态的。
 

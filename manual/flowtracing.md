@@ -126,7 +126,7 @@ public class App {
 
 下面是日志的结果：
 
-```shell
+```text
 19:08:07.056 TRACE com.test.TestService 19 retrieveMessage -  entry
 19:08:07.060 TRACE com.test.TestService 46 getKey -  entry
 19:08:07.060 TRACE com.test.TestService 48 getKey -  exit with (0)
@@ -175,7 +175,7 @@ public class App {
 
 在上面的例子中，将root logger级别改为DEBUG将大大降低输出。
 
-```shell
+```text
 19:13:24.963 DEBUG com.test.TestService 32 exampleException - catching java.lang.ArrayIndexOutOfBoundsException: 3
         at com.test.TestService.exampleException(TestService.java:29) [classes/:?]
         at com.test.App.main(App.java:9) [classes/:?]
