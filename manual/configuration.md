@@ -1179,3 +1179,17 @@ Log4j 2系统属性：
 | AsyncLoggerConfig.ExceptionHandler | default handler | 详情看[Async Logger](./async.md#SysPropsMixedSync-Async)章节。 |
 | AsyncLoggerConfig.RingBufferSize | 256 * 1024 | 详情看[Async Logger](./async.md#SysPropsMixedSync-Async)章节。 |
 | AsyncLoggerConfig.WaitStrategy | Timeout | 详情看[Async Logger](./async.md#SysPropsMixedSync-Async)章节。 |
+| log4j.jul.LoggerAdapter | org.apache.logging.log4j.jul.ApiLogerAdapter | 为JUL适配器配置使用的默认LoggerAdapter。默认情况下，如果log4j-core可用，那么将使用`org.apache.logging.log4j.jul.CoreLoggerAdapter`类。否则，将使用ApiLogggerAdapter。自定义实现必须提供一个public默认构造函数。 |
+| logj4.format.msg.async | false | 如果为`false`（默认值），Log4j将确保消息在调用程序线程中格式化，以确保调用logger时有记录的值。 |
+| log4j2.AsyncQueueFullPolicy | - | 被Async Loggers和AsyncAppender使用，用于在appender无法跟上记录速率和队列填满情况下，保证应用程序吞吐量。<br><br> 如果未指定值（默认值），则不会丢弃事件。如果队列已满，logger调用将阻塞，直到事件可以添加到队列。<br><br> 指定`Discard`可以在队列已满时删除其级别等于或小于阈值级别（默认为INFO）的事件。 |
+| log4j2.DiscardThreshold | INFO | 由DiscardingAsyncQueueFullPolicy使用，以确定在队列变满时要删除哪些事件。默认情况下，当队列已满时，将丢弃INFO，DEBUG和TRACE级别事件。只有`log4j2.AsyncQueueFullPolicy`设置于为`Discard`时，此属性才有效。 |
+| log4j2.messageFactory | org.apache.logging.log4j.messsage.ParameterizedMessage <br> 或在无垃圾（garbage-free）模式下，org.apache.logging.log4j.message.ReusableMessageFactory | 如果未指定，logger使用默认消息工厂。 |
+| log4j2.flowMessageFactory | org.apache.logging.log4j.message.DefaultFlowMessageFactory | logger使用的默认流消息工厂。 |
+| log4j2.is.webapp | 若`Servlet`在类路径中，则为`true` | 此系统属性可用于强制Log4j 2表现为它是Web应用程序的一部分（如果为true），或者如果它不是Web应用程序的一部分（为false时）。 |
+| log4j2.enable.threadlocals | true | 这个系统属性可以用来关闭threadlocal的使用，这将部分地禁用Log4j的无垃圾（garbage-free）功能：为了达到无垃圾（garbage-free），Log4j在ThreadLocal字段中存储对象，以重用它们，否则为每个日志事件创建新对象。请注意，当Log4j检测到它在Web应用程序中运行时，此属性无效。 |
+| log4j2.enable.direct.encoders | true | 此属性可用于强制垃圾感知的Layouts和Appenders恢复到2.6之前的行为，其中将日志事件转换为文本，生成临时对象，如Strings和`char[]`数组，并将此文本转换为字节，生成临时`byte[]`数组。默认情况下，此属性为`true`，并且垃圾感知的Layouts和Appenders将日志事件转换为文本，再将此文本转换为字节，而不用创建临时对象。 |
+| log4j.initialReusableMsgSize | 128 | 在无GC模式下，此属性确定可重用的StringBuilders的初始大小，其中消息文本被格式化并可能传递给后台线程。 |
+| log4j.maxReusableMsgSize | 518 | 在无GC模式下，此属性确定可重用StringBuilders的最大大小，其中消息文本的格式可能会传递给后台线程。 |
+| log4j.layoutStringBuilder.maxSize | 2048 | 此属性确定线程本地（thread-local）可重用StringBuilders的最大大小，该StringBuilders被AbstractStringLayout用于把日志事件格式化为文本的。 |
+| log4j.unbox.ringbuffer.size | 32 | `org.apache.logging.log4j.util.Unbox`工具类维护了一个小的线程本地环形缓冲区（thread-local ring buffer）StringBuilders。每次调用`box()`方法时，使用环形缓冲区中的下一个槽（slot），直到环形缓冲区满且第一个槽被重用。默认情况下，Unbox环形缓冲区有32个插槽（slots），因此用户代码在单个logger调用中最多可以有32个boxed原语。<br> 如果需要更多插槽，请将系统属性`log4j.unbox.ringbuffer.size`设置为所需的环形缓冲区大小。 注意，指定的数字将向上取整为最接近的2的幂的值。 |
+| log4j.LoggerContext.stacktrace.on.start | false | 当LoggerContext启动时，在DEBUG级别向[status logger](./configuration.md#StatusMessages)打印一个堆栈跟踪（stacktrace）信息。出于调试目的。 |
