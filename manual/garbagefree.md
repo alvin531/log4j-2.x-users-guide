@@ -14,7 +14,7 @@
 
 面板里显示，使用Log4j 2.5这个应用程序以大约809MB/秒的速率分配内存，导致141次小垃圾回收。Log4j 2.6中不分配临时对象，因此与Log4j 2.6相同的应用程序以1.6MB/秒的内存分配速率，且是无GC，具有0（零）垃圾回收。
 
-使用Log4j 2.5：内存分配速率809MB/秒，141个小垃圾回收：
+使用Log4j 2.5：内存分配速率809MB/秒，141个minor gc动作：
 
 ![log4j 2.5 FlightRecording](../assets/images/log4j-2.5-FlightRecording-thumbnail40pct.png)
 
@@ -138,6 +138,82 @@ Logger接口里增加了一些方法，以便在记录最多十个参数的消�
 
 当禁用无垃圾日志记录功能时（当系统属性`log4j2.enable.threadlocals`设置为“false”），Log4j会调用消息和参数对象的`toString()`方法。
 
+### 对应用程序代码的影响：自动装箱（Autoboxing）
+
+Log4j尽可能地使得无需更改现有应用程序的任何代码来达到日志无垃圾功能，但这里有一处地方是无法达到这个目的的。当记录原始值（即int，double，boolean等）时，JVM将这些原始值自动装箱到它们对等的包装对象上，从而产生垃圾。
+
+Log4j提供了一个`Unbox`实用程序来防止原始参数的自动装箱。这个实用程序包含一个重用`StringBuilders`的本地线程池。`Unbox.box(primitive)`方法直接写入`StringBuilder`，并且生成的文本将被复制到最终的日志消息文本中，而不创建临时对象。
+
+```java
+import static org.apache.logging.log4j.util.Unbox.box;
+
+...
+public void garbageFree() {
+    logger.debug("Prevent primitive autoboxing {} {}", box(10L), box(2.6d));
+}
+```
+
+> **注意：** 并非所有的日志记录都是无垃圾的。特别是：
+>
+> * 默认ThreadContext map不是无垃圾的，但可以通过设置系统属性`log4j2.garbagefree.threadContextMap`为`true`来达到无垃圾功能。
+> * ThreadContext stack不是无垃圾的。
+> * 记录超过10个参数会创建可变参数数组（vararg arrays）。
+> * 当所有logger都是Async Logger时，记录非常大的消息（超过518个字符）将导致RingBuffer内部的StringBuilder被修剪到它们的最大大小。
+> * 记录包含'${'：替换${variable}的消息将创建临时对象。
+> * 使用lambda作为 _参数_（`logger.info("lambda value is {}", () -> callExpensiveMethod())`）创建一个可变参数数组（vararg arrays）。但记录lambda表达式本身是无垃圾的：`logger.debug(() -> callExpensiveMethod())`。
+> * `Logger.traceEntry`和`Logger.traceExit`方法创建临时对象。
+
 ## 性能
 
+### 响应时延
+
+[响应时间（Response Time）](https://logging.apache.org/log4j/2.x/performance.html#responseTime)是在特定负载下记录消息所需的时间。通常延迟实际上就是 _服务时间（service time）_：执行操作所需的时间。这隐藏了一个细节，即服务时间中的单个峰值包含了许多后续操作的排队延迟。服务时间很容易测量，但对用户来说是没太大意义，因为它省略了等待服务所花费的时间。为此，我们在这里给出的响应时间是：服务时间加上等待时间。有关更多详细信息，请参阅[性能文档的响应时间](https://logging.apache.org/log4j/2.x/performance.html#responseTime)部分。
+
+下面的响应时间测试结果都是从Log4j 2单元测试源目录中的ResponseTimeTest类运行得来的。如果你想自己运行这些测试，这里列示了我们使用的命令行选项：
+
+* -Xms1G -Xmx1G（在测试期间防止堆调整大小）
+* -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.WaitStrategy=busyspin（使用异步logger，BusySpin等待策略减少抖动。）
+* **经典模式（classic mode）：** -Dlog4j2.enable.threadlocals=false -Dlog4j2.enable.direct.encoders=false
+  **无垃圾模式（garbage-free mode）：** -Dlog4j2.enable.threadlocals=true -Dlog4j2.enable.direct.encoders=true
+* -XX:CompileCommand=dontinline,org.apache.logging.log4j.core.async.perftest.NoOpIdleStrategy::idle
+* -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -XX:+PrintGCApplicationConcurrentTime -XX:+PrintGCApplicationStoppedTime（eyeball GC和保持点暂停--safepoint pauses）
+
+### Async Loggers
+
+下面的图表将Log4j的Async Loggers的“经典（classic）”日志记录与无垃圾日志记录的响应时间进行比较。在图中，“100k”表示以100,000个消息/秒的持续负载记录，“800k”表示800,000个消息/秒的持续负载。
+
+![Response Time Async Classic Vs Gc-Free](../assets/images/ResponseTimeAsyncClassicVsGcFree-label.png)
+
+在 **经典（classic）** 模式中，我们看到大量的Minor GC动作，应用程序线程被暂停3毫秒或更多时间。几乎可以导致10毫秒的响应时延。如图所示，增加负载会将曲线向左移（有更大峰值）。这是因为：越多的日志意味着对垃圾收集器造成越大的压力，导致更高频繁的的Minor GC暂停。我们尝试减少负载到50,000或甚至5000消息/秒，但这并没有消除3毫秒的暂停，它只是使它们发生频繁变小了。请注意，此测试中的所有GC暂停都是Minor GC暂停。我们没有看到任何Full GC行为。
+
+在 **无垃圾（garbage-free）** 模式下，在很大一段负载范围内，最大响应时间仍然远远低于1毫秒。（800,000消息/秒下，最大780微秒；600,000消息/秒下，最大407微秒；所有负载高达800,000条/秒时，99%大约在5微秒左右）增加或减少负载不会改变响应时延。我们没有深入调查在这些测试中看到的200-300微秒暂停的原因。
+
+当我们进一步增加负载时，我们开始看到对于经典和无垃圾日志记录都有更大的响应时间停顿。在100万条消息/秒或更多的持续负载下，开始接近底层RandomAccessFile Appender的最大吞吐量（请参见下面的同步日志记录吞吐量图表）。在这些负载下，ringbuffer开始填满，压力开始上来：在ringbuffer已满时尝试添加另一条消息将阻塞，直至有空余空间。开始会看到几十毫秒或更长的响应时间；若再试图增加负载会导致更大更大的响应时延峰值。
+
+### 同步文件记录
+
+使用同步文件日志记录，无垃圾日志记录仍然比经典日志记录更好，但差异不太明显。
+
+在100,000条消息/秒的工作负载下，经典的日志记录最大响应时间略大于2毫秒，而无垃圾日志记录稍微超过1毫秒。当工作负载增加到30万条消息/秒时，经典日志记录的响应时间暂停为6毫秒，而无垃圾的响应时间小于3毫秒。可能可以改进优化，但我们没有进一步深入调查分析。
+
+![Response Time Sync Classic Vs Gc-Free](../assets/images/ResponseTimeSyncClassicVsGcFree.png)
+
+上述结果是使用ResponseTimeTest类获得的，它可以在Log4j 2单元测试源目录中找到，该代码在RHEL 6.5（Linux 2.6.32-573.1.1.el6.x86_64）上的JDK 1.8.0_45上运行，具有10核Xeon CPU E5-2660 v3@2.60GHz，启用超程（20个虚拟核心）。
+
+### 经典日志具有更高的吞吐量
+
+与经典日志记录相比，无垃圾日志记录的吞吐量稍差。对于同步和异步日志记录都是如此。下图比较了在无垃圾模式，经典模式和Log4j 2.5中同步日志记录到具有Log4j 2.6的文件的持续吞吐量。
+
+![garbage-free 2.6 Sync Throughput](../assets/images/garbage-free2.6-SyncThroughputLinux.png)
+
+上面的结果是使用[JMH](http://openjdk.java.net/projects/code-tools/jmh/) Java基准线束获得的。请参见log4j-perf模块中的FileAppenderBenchmark源代码。
+
 ## 底层技术
+
+实现`org.apache.logging.log4j.util.StringBuilderFormattable`的自定义消息可以通过无垃圾的layout直接转换为文本而不需要创建临时对象。`PatternLayout`使用这种机制，其他的layout也可能使用此接口将LogEvents转换为文本。
+
+自定义layout可以通过实现`Encoder<LogEvent>`接口来达到无垃圾的功能。对于自定义Layouts，将LogEvent转换为文本表示，`org.apache.logging.log4j.core.layout.StringBuilderEncoder`类提供了一些工具方法，对于以无垃圾的方式将文本转换为字节提供一些有用的辅助。
+
+自定义Appender想实现无垃圾，应该为它们的layout提供一个`ByteBufferDestination`实现，该layout可以直接写入。
+
+`AbstractOutputStreamAppender`已被更新，使得ConsoleAppender，(Rolling)FileAppender，(Rolling)RandomAccessFileAppender和MemoryMappedFileAppender实现无垃圾功能。已尽可能地减少对扩展`AbstractOutputStreamAppender`的自定义Appender的影响，但不可能保证对超类的更改不会影响到任何子类。扩展`AbstractOutputStreamAppender`的自定义appenders应验证功能是否还正常。如果有问题，可以设置系统属性`log4j2.enable.direct.encoders`为“false”，以恢复到Log4j 2.6之前的行为。
